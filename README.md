@@ -233,3 +233,10 @@ A flag in `include\Config.h` activates time measurements. It is necessary to unc
 
 # 9. Calibration
 You can find a tutorial for visual-inertial calibration and a detailed description of the contents of valid configuration files at  `Calibration_Tutorial.pdf`
+
+# REFERENCES
+- https://mirkokiefer.com/cmake-by-example-f95eb47d45b1
+- https://cmake.org/cmake/help/book/mastering-cmake/chapter/Finding%20Packages.html
+
+# Uninstall
+cd build && xargs rm < install_manifest.txt
