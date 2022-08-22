@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM3)
+set(version 1.0)
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
@@ -12,20 +13,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 
-# Check C++11 or C++0x support
+# Check C++14 or C++0x support
 include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
 if(COMPILER_SUPPORTS_CXX11)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
    add_definitions(-DCOMPILEDWITHC11)
-   message(STATUS "Using flag -std=c++11.")
+   message(STATUS "Using flag -std=c++14.")
 elseif(COMPILER_SUPPORTS_CXX0X)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
    add_definitions(-DCOMPILEDWITHC0X)
    message(STATUS "Using flag -std=c++0x.")
 else()
-   message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+   message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++14 support. Please use a different C++ compiler.")
 endif()
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
@@ -134,6 +135,58 @@ if(realsense2_FOUND)
     ${realsense2_LIBRARY}
     )
 endif()
+
+# Install 
+install(FILES 
+include/System.h
+include/Tracking.h
+include/LocalMapping.h
+include/LoopClosing.h
+include/ORBextractor.h
+include/ORBmatcher.h
+include/FrameDrawer.h
+include/Converter.h
+include/MapPoint.h
+include/KeyFrame.h
+include/Atlas.h
+include/Map.h
+include/MapDrawer.h
+include/Optimizer.h
+include/Frame.h
+include/KeyFrameDatabase.h
+include/Sim3Solver.h
+include/Viewer.h
+include/ImuTypes.h
+include/G2oTypes.h
+include/CameraModels/GeometricCamera.h
+include/CameraModels/Pinhole.h
+include/CameraModels/KannalaBrandt8.h
+include/OptimizableTypes.h
+include/MLPnPsolver.h
+include/GeometricTools.h
+include/TwoViewReconstruction.h
+include/SerializationUtils.h
+include/Config.h
+include/Settings.h
+DESTINATION include/orb_slam3-${version})
+install(TARGETS ${PROJECT_NAME} 
+        DESTINATION lib/orb_slam3-${version}
+        EXPORT orb_slam3-targets)
+install(EXPORT orb_slam3-targets 
+        DESTINATION lib/orb_slam3-${version})
+
+# Create and install package configuration and version files.
+configure_file(
+   ${ORB_SLAM3_SOURCE_DIR}/pkg/orb_slam3-config.cmake.in
+   ${ORB_SLAM3_BINARY_DIR}/pkg/orb_slam3-config.cmake @ONLY)
+
+configure_file(
+   ${ORB_SLAM3_SOURCE_DIR}/orb_slam3-config-version.cmake.in
+   ${ORB_SLAM3_BINARY_DIR}/orb_slam3-config-version.cmake @ONLY)
+
+install(FILES ${ORB_SLAM3_BINARY_DIR}/pkg/orb_slam3-config.cmake
+         ${ORB_SLAM3_BINARY_DIR}/orb_slam3-config-version.cmake
+         DESTINATION lib/orb_slam3-${version})
 
 
 # Build examples
