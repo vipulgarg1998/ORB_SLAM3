@@ -17,7 +17,7 @@ include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
 if(COMPILER_SUPPORTS_CXX11)
-   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
    add_definitions(-DCOMPILEDWITHC11)
    message(STATUS "Using flag -std=c++11.")
 elseif(COMPILER_SUPPORTS_CXX0X)
@@ -30,6 +30,9 @@ endif()
 
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
+# ZED Camera
+option(LINK_SHARED_ZED "Link with the ZED SDK shared executable" ON)
+
 find_package(OpenCV 4.4)
    if(NOT OpenCV_FOUND)
       message(FATAL_ERROR "OpenCV > 4.4 not found.")
@@ -41,6 +44,9 @@ MESSAGE(${OpenCV_VERSION})
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(realsense2)
+# ZED Requirements
+find_package(ZED 3 REQUIRED)
+find_package(CUDA ${ZED_CUDA_VERSION} REQUIRED)
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
@@ -49,6 +55,9 @@ ${PROJECT_SOURCE_DIR}/include/CameraModels
 ${PROJECT_SOURCE_DIR}/Thirdparty/Sophus
 ${EIGEN3_INCLUDE_DIR}
 ${Pangolin_INCLUDE_DIRS}
+# ZED Requirements
+${CUDA_INCLUDE_DIRS}
+${ZED_INCLUDE_DIRS}
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -115,6 +124,13 @@ include/Settings.h)
 
 add_subdirectory(Thirdparty/g2o)
 
+
+if (LINK_SHARED_ZED)
+        SET(ZED_LIBS ${ZED_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_CUDART_LIBRARY})
+else()
+        SET(ZED_LIBS ${ZED_STATIC_LIBRARIES} ${CUDA_CUDA_LIBRARY} ${CUDA_LIBRARY})
+endif()
+
 target_link_libraries(${PROJECT_NAME}
 ${OpenCV_LIBS}
 ${EIGEN3_LIBS}
@@ -123,6 +139,9 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 -lboost_serialization
 -lcrypto
+# ZED Requirements
+${ZED_LIBS}
+${CUDA_LIBRARIES}
 )
 
 # If RealSense SDK is found the library is added and its examples compiled
@@ -140,6 +159,11 @@ endif()
 
 # RGB-D examples
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
+
+# ZED Example
+add_executable(rgbd_zed
+        Examples/RGB-D/rgbd_zed.cpp)
+target_link_libraries(rgbd_zed ${PROJECT_NAME})
 
 add_executable(rgbd_tum
         Examples/RGB-D/rgbd_tum.cc)
