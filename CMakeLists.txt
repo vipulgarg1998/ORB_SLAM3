@@ -143,6 +143,7 @@ include/Tracking.h
 include/LocalMapping.h
 include/LoopClosing.h
 include/ORBextractor.h
+include/ORBVocabulary.h
 include/ORBmatcher.h
 include/FrameDrawer.h
 include/Converter.h
@@ -158,9 +159,6 @@ include/Sim3Solver.h
 include/Viewer.h
 include/ImuTypes.h
 include/G2oTypes.h
-include/CameraModels/GeometricCamera.h
-include/CameraModels/Pinhole.h
-include/CameraModels/KannalaBrandt8.h
 include/OptimizableTypes.h
 include/MLPnPsolver.h
 include/GeometricTools.h
@@ -169,6 +167,29 @@ include/SerializationUtils.h
 include/Config.h
 include/Settings.h
 DESTINATION include/orb_slam3-${version})
+
+install(FILES 
+include/CameraModels/GeometricCamera.h
+include/CameraModels/Pinhole.h
+include/CameraModels/KannalaBrandt8.h
+DESTINATION include/orb_slam3-${version}/CameraModels/)
+
+# install(FILES 
+# Thirdparty/DBoW2/DUtils/Random.h
+# DESTINATION include/orb_slam3-${version}/Thirdparty/DBoW2/DUtils/)
+
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/Thirdparty" # source directory
+        DESTINATION include/orb_slam3-${version} # target directory
+        FILES_MATCHING # install only matched files
+        PATTERN "*.h" # select header files
+)
+
+install(DIRECTORY "${CMAKE_SOURCE_DIR}/Thirdparty" # source directory
+        DESTINATION include/orb_slam3-${version} # target directory
+        FILES_MATCHING # install only matched files
+        PATTERN "*.hpp" # select header files
+)
+
 install(TARGETS ${PROJECT_NAME} 
         DESTINATION lib/orb_slam3-${version}
         EXPORT orb_slam3-targets)

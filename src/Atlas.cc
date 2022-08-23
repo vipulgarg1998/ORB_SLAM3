@@ -19,7 +19,7 @@
 #include "Atlas.h"
 #include "Viewer.h"
 
-#include "GeometricCamera.h"
+#include "CameraModels/GeometricCamera.h"
 #include "Pinhole.h"
 #include "KannalaBrandt8.h"
 
