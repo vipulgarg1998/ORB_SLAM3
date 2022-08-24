@@ -18,6 +18,8 @@
 #include <sl/Camera.hpp>
 
 #include<System.h>
+#include <ipresence-1.0/ipresence.hpp>
+#include <ipresence-1.0/gui.hpp>
 
 using namespace std;
 
@@ -59,12 +61,17 @@ int main(int argc, char **argv)
     // Testing on 1 Cameras
     int num_cams = 1;
     sl::Camera zed;
+    // Create a ipresence class handler
+    std::shared_ptr<Ipresence> ipresence = std::make_shared<Ipresence>();
+    // Viewer
+    std::shared_ptr<GUI> pcl_visualizer = std::make_shared<GUI>(true);
+    point_cloud_type_ptr merged_pc(new point_cloud_type);
 
     // ZED Camera Parameters
     sl::InitParameters init_parameters;
     init_parameters.depth_mode = sl::DEPTH_MODE::NEURAL;
     init_parameters.coordinate_units = sl::UNIT::METER;
-    init_parameters.depth_minimum_distance = 0.15;
+    init_parameters.depth_minimum_distance = 2.15;
     init_parameters.depth_stabilization = true;
 
     // Read From the File
@@ -96,6 +103,8 @@ int main(int argc, char **argv)
 
         // Printing File Details
         std::cout<<"Reading File at "<<svo_folder_dir<<" With Serial Number "<<camInfo.serial_number<<std::endl;
+        ipresence->create_camera_by_id((int)camInfo.serial_number);
+        ipresence->set_caliberation_params((int)camInfo.serial_number, fx, fy, cx, cy, distCoeff, width, height);
         i++;
         if (i == num_cams){
             break;
@@ -137,22 +146,38 @@ int main(int argc, char **argv)
                     cv::resize(cv_depth_im, cv_depth_im, cv::Size(width, height));
                 }
                 // std::cout<<"Images Scaled: "<<"Success"<<std::endl;
+                auto camInfo = zed.getCameraInformation();
+                auto cam = ipresence->get_camera_by_id((int)camInfo.serial_number);
+                
+                // Check the timeStamp for each image
+                cam->set_img(cv_bgr_im);
+                cam->set_depth_img(cv_depth_im);
 
                 // std::cout<<"Processing Image"<<std::endl;
                 std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-                SLAM.TrackRGBD(cv_bgr_im,cv_depth_im,tframe);
+                auto Tcw = SLAM.TrackRGBD(cv_bgr_im,cv_depth_im,tframe).matrix();
+                ipresence->get_camera_by_index(1)->pose.transformation_matrix = Tcw.cast<double>();
+                ipresence->prepare_pc(-1, true, true, false);
+                *merged_pc += *(ipresence->get_camera_by_index(1)->pc_handler.pc);
+                ipresence->filter_pc(merged_pc);
+                cout<<merged_pc->size()<<endl;
                 std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
                 double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
 
                 // Wait to load the next frame
                 double T=1.0f/15;
                 if(ttrack<T){
+                    std::cout<<"Going to Sleep"<<std::endl;
                     usleep((T-ttrack)*1e6);
                 }
             }
             else if (returned_state == sl::ERROR_CODE::END_OF_SVOFILE_REACHED)
             {
                 std::cout<<"returned_state: "<<"End of File"<<std::endl;
+                while(1){
+                    pcl_visualizer->add_pc(merged_pc);
+                    pcl_visualizer->spin(10);
+                }
                 return 0;
             }
             else {

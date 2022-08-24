@@ -12,6 +12,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -march=native")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native")
 
+set(PCL_DIR "/usr/local/share/pcl-1.12/PCLConfig.cmake")
+set(CMAKE_PREFIX_PATH "/opt/Qt/6.3.1/gcc_64/lib/cmake")
 # Check C++11 or C++0x support
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
@@ -47,6 +49,16 @@ find_package(realsense2)
 # ZED Requirements
 find_package(ZED 3 REQUIRED)
 find_package(CUDA ${ZED_CUDA_VERSION} REQUIRED)
+# Ipresence Requirements
+find_package(ipresence 1.0 REQUIRED)
+find_package( OpenCV REQUIRED )
+find_package (Eigen3 REQUIRED )
+find_package(PCL 1.12 REQUIRED)
+find_package(ZED 3 REQUIRED)
+find_package(CUDA ${ZED_CUDA_VERSION} REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(PythonLibs REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 include_directories(
 ${PROJECT_SOURCE_DIR}
@@ -58,6 +70,17 @@ ${Pangolin_INCLUDE_DIRS}
 # ZED Requirements
 ${CUDA_INCLUDE_DIRS}
 ${ZED_INCLUDE_DIRS}
+# Ipresence Requirements
+${IPRESENCE_INCLUDE_DIRS}
+${catkin_INCLUDE_DIRS}
+${OpenCV_INCLUDE_DIRS}
+${Eigen3_INCLUDE_DIRS}
+${PCL_INCLUDE_DIRS}
+${CUDA_INCLUDE_DIRS}
+${ZED_INCLUDE_DIRS}
+# ${Open3D_INCLUDE_DIRS}
+${YAML_CPP_INCLUDE_DIRS}
+${PYTHON_INCLUDE_DIRS}
 )
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
@@ -142,6 +165,7 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 # ZED Requirements
 ${ZED_LIBS}
 ${CUDA_LIBRARIES}
+# ipresence
 )
 
 # If RealSense SDK is found the library is added and its examples compiled
@@ -163,7 +187,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
 # ZED Example
 add_executable(rgbd_zed
         Examples/RGB-D/rgbd_zed.cpp)
-target_link_libraries(rgbd_zed ${PROJECT_NAME})
+target_link_libraries(rgbd_zed 
+  ${PROJECT_NAME} 
+  ipresence
+  ${catkin_LIBRARIES} 
+  ${OpenCV_LIBS}
+  ${PCL_LIBRARIES}
+  ${ZED_LIBS}
+  ${CUDA_LIBRARIES}
+  Eigen3::Eigen
+  ${YAML_CPP_LIBRARIES}
+  ${PYTHON_LIBRARIES}
+  Qt6::Widgets
+)
 
 add_executable(rgbd_tum
         Examples/RGB-D/rgbd_tum.cc)

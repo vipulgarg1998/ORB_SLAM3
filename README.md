@@ -236,3 +236,15 @@ You can find a tutorial for visual-inertial calibration and a detailed descripti
 
 ## Run for 1 zed camera
 ./Examples/RGB-D/rgbd_zed Vocabulary/ORBvoc.txt ./Examples/RGB-D/ZED.yaml ../takamaru/svo/slam/HD720_SN30172465_20-18-31.svo
+
+## Errors
+- cannot open shared object file: No such file or directory
+
+Solution: https://stackoverflow.com/questions/480764/linux-error-while-loading-shared-libraries-cannot-open-shared-object-file-no-s
+
+
+  ```
+  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/Qt/6.3.1/gcc_64/lib/
+  export LD_LIBRARY_PATH
+  ```
+
