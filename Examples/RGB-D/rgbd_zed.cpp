@@ -64,15 +64,32 @@ int main(int argc, char **argv)
     sl::InitParameters init_parameters;
     init_parameters.depth_mode = sl::DEPTH_MODE::NEURAL;
     init_parameters.coordinate_units = sl::UNIT::METER;
+    init_parameters.coordinate_system = sl::COORDINATE_SYSTEM::RIGHT_HANDED_Y_UP; // Use a right-handed Y-up coordinate system
     init_parameters.depth_minimum_distance = 0.15;
     init_parameters.depth_stabilization = true;
+
+    init_parameters.input.setFromSVOFile(svo_folder_dir.c_str());
+    // Open Camera with the SVO file
+    zed.open(init_parameters);
+
+    // Configure spatial mapping parameters
+    sl::SpatialMappingParameters mapping_parameters(sl::SpatialMappingParameters::MAPPING_RESOLUTION::LOW,
+                                                    sl::SpatialMappingParameters::MAPPING_RANGE::AUTO);
+    // In this cas we want to create a Mesh
+    mapping_parameters.map_type = sl::SpatialMappingParameters::SPATIAL_MAP_TYPE::MESH;
+    mapping_parameters.save_texture = true;
+    // filter_params.set(sl::MeshFilterParameters::MESH_FILTER::LOW); // not available for fused point cloud
+
+    sl::Mesh mesh; // Create a mesh object
+    int timer=0;
+    
+    // Enable tracking and mapping
+    zed.enablePositionalTracking();
+    zed.enableSpatialMapping(mapping_parameters);
 
     // Read From the File
     int i = 0;
     for (int k = 0; k < num_cams; k++){
-        init_parameters.input.setFromSVOFile(svo_folder_dir.c_str());
-        // Open Camera with the SVO file
-        zed.open(init_parameters);
 
         auto camInfo = zed.getCameraInformation();
         auto camCalib = camInfo.camera_configuration.calibration_parameters.left_cam;
@@ -110,57 +127,69 @@ int main(int argc, char **argv)
     vector<double> vTimestamps;
 
     while (true) {
-        for (int k = 0; k < i; k++){
-            auto returned_state = zed.grab();
-            if (returned_state == sl::ERROR_CODE::SUCCESS) {
-                // std::cout<<"returned_state: "<<"Success"<<std::endl;
-                // Retrieve Images from ZED
-                zed.retrieveImage(rgb_img, sl::VIEW::LEFT, sl::MEM::CPU);
-                zed.retrieveMeasure(depth_img, sl::MEASURE::DEPTH); // Retrieve depth
-                // std::cout<<"Images Retrieved: "<<"Success"<<std::endl;
+        auto returned_state = zed.grab();
+        if (returned_state == sl::ERROR_CODE::SUCCESS) {
+            // std::cout<<"returned_state: "<<"Success"<<std::endl;
+            // Retrieve Images from ZED
+            zed.retrieveImage(rgb_img, sl::VIEW::LEFT, sl::MEM::CPU);
+            zed.retrieveMeasure(depth_img, sl::MEASURE::DEPTH); // Retrieve depth
+            // std::cout<<"Images Retrieved: "<<"Success"<<std::endl;
 
-                // Convert ZED Image to OpenCV Image
-                cv_depth_im = slMat2cvMat(depth_img);
-                cv_bgr_im = slMat2cvMat(rgb_img);
-                cv::cvtColor(cv_bgr_im, cv_bgr_im, cv::COLOR_BGRA2RGB);
-                // std::cout<<"Images Converted: "<<"Success"<<std::endl;
+            // Convert ZED Image to OpenCV Image
+            cv_depth_im = slMat2cvMat(depth_img);
+            cv_bgr_im = slMat2cvMat(rgb_img);
+            cv::cvtColor(cv_bgr_im, cv_bgr_im, cv::COLOR_BGRA2RGB);
+            // std::cout<<"Images Converted: "<<"Success"<<std::endl;
 
-                // Add timestamp
-                double tframe = zed.getTimestamp(sl::TIME_REFERENCE::IMAGE).getSeconds();
-                // std::cout<<"Time Stamp: "<<tframe<<std::endl;
+            // Add timestamp
+            double tframe = zed.getTimestamp(sl::TIME_REFERENCE::IMAGE).getSeconds();
+            // std::cout<<"Time Stamp: "<<tframe<<std::endl;
 
-                if(imageScale != 1.f)
-                {
-                    int width = cv_bgr_im.cols * imageScale;
-                    int height = cv_bgr_im.rows * imageScale;
-                    cv::resize(cv_bgr_im, cv_bgr_im, cv::Size(width, height));
-                    cv::resize(cv_depth_im, cv_depth_im, cv::Size(width, height));
-                }
-                // std::cout<<"Images Scaled: "<<"Success"<<std::endl;
-
-                // std::cout<<"Processing Image"<<std::endl;
-                std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-                SLAM.TrackRGBD(cv_bgr_im,cv_depth_im,tframe);
-                std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-                double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
-
-                // Wait to load the next frame
-                double T=1.0f/15;
-                if(ttrack<T){
-                    usleep((T-ttrack)*1e6);
-                }
-            }
-            else if (returned_state == sl::ERROR_CODE::END_OF_SVOFILE_REACHED)
+            if(imageScale != 1.f)
             {
-                std::cout<<"returned_state: "<<"End of File"<<std::endl;
-                return 0;
+                int width = cv_bgr_im.cols * imageScale;
+                int height = cv_bgr_im.rows * imageScale;
+                cv::resize(cv_bgr_im, cv_bgr_im, cv::Size(width, height));
+                cv::resize(cv_depth_im, cv_depth_im, cv::Size(width, height));
             }
-            else {
-                std::cout<<"returned_state: "<<"Something Else"<<std::endl;
-                return 0;
+            // std::cout<<"Images Scaled: "<<"Success"<<std::endl;
+
+            // std::cout<<"Processing Image"<<std::endl;
+            std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+            SLAM.TrackRGBD(cv_bgr_im,cv_depth_im,tframe);
+            std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+            double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
+
+            // Wait to load the next frame
+            double T=1.0f/15;
+            if(ttrack<T){
+                usleep((T-ttrack)*1e6);
             }
         }
+        else if (returned_state == sl::ERROR_CODE::END_OF_SVOFILE_REACHED)
+        {
+            std::cout<<"returned_state: "<<"End of File"<<std::endl;
+            break;
+        }
+        else {
+            std::cout<<"returned_state: "<<"Something Else"<<std::endl;
+            return 0;
+        }
     }
+    std::cout<<"Extract Map"<<std::endl;
+    // Retrieve the spatial map
+    zed.extractWholeSpatialMap(mesh);
+    std::cout<<"Filter Map"<<std::endl;
+    // Filter the mesh
+    mesh.filter(sl::MeshFilterParameters::MESH_FILTER::LOW); // not available for fused point cloud
+    std::cout<<"Apply Texture to Map"<<std::endl;
+    // Apply the texture
+    mesh.applyTexture(); // not available for fused point cloud
+    std::cout<<"Save Map"<<std::endl;
+    // Save the mesh in .obj format
+    mesh.save("mesh.obj");
+
+
 
     // Stop all threads
     SLAM.Shutdown();
